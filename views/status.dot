@@ -1,0 +1,5 @@
+<html>
+    <h1>Cached http requests</h1>
+    <p>Number of requests: {{=it.urls.length}}</p>
+    <ul>{{~it.urls :url}}<li>{{=url}}</li>{{~}}</ul>
+</html>
