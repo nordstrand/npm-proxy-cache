@@ -1,7 +1,9 @@
 <html>
     <h1>Cached http requests</h1>
     <p>Cache entries: {{=it.cache.size}}</p>
-    <p>Cache size: {{=it.cache.values().map(function(b) { return b.length;})}}</p>
+    <p>Cache size: {{= (function() { var s = 0; for(var value of it.cache.values()) { s = s + value.length; }; return s; })() }}<p>
+
+
     <table>
         {{ for(var url of it.cache.keys()) { }}
         {{ var data = it.cache.get(url); }}
