@@ -15,6 +15,7 @@
     "rimraf": "*"
   },
   "scripts": {
+    "start": "node bin/npm-proxy-cache",
     "test": "mocha -R spec --recursive"
   },
   "repository": {

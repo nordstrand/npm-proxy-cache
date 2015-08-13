@@ -1,13 +1,21 @@
 <html>
-    <h1>Cached http requests</h1>
-    <p>Cache entries: {{=it.cache.size}}</p>
-    <p>Cache size: {{= (function() { var s = 0; for(var value of it.cache.values()) { s = s + value.length; }; return s; })() }}<p>
+    <h1>Cache status</h1>
 
+    <ul>
+        <li>Cache entries: {{=it.cache.size}}</li>
+        <li>Cache total size: {{= (function() { var s = 0; for(var value of it.cache.values()) { s = s + value.data.length; }; return s; })() }}</li>
+    </ul>
 
-    <table>
+    <form action="/" method="post">
+        <button type="submit">Invalidate</button>
+    </form>
+
+    <hr/>
+
+    <table border="1">
         {{ for(var url of it.cache.keys()) { }}
-        {{ var data = it.cache.get(url); }}
-            <tr><td>{{=url}}</td><td>{{=data.length}}</td></tr>
+        {{ var value = it.cache.get(url); }}
+            <tr><td>{{=url}}</td><td>{{=value.etag}}</td><td>{{=value.contenttype}}</td><td>{{=value.data.length}}</td></tr>
         {{ } }}
     </table>
 </html>
