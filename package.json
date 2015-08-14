@@ -6,6 +6,7 @@
     "dot": "^1.0.3",
     "log4js": "0.6.8",
     "mkdirp": "0.3.5",
+    "pem": "^1.7.2",
     "request": "2.27.0"
   },
   "description": "HTTP/HTTPS caching proxy for work with `npm` utility / registry",
