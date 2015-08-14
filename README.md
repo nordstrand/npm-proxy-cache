@@ -1,70 +1,72 @@
 
-npm-proxy-cache
+docker-transparent-http-cache
 ========
 
-HTTP/HTTPS caching proxy for work with `npm` utility. This is **not** a reverse proxy.
-
-You may find this tool useful if you are experiencing huge network lags / latency
-problems. Other solutions such as local CoachDB mirror of npm registry require much
-more work and maintenance.
-
-
-## Installation
-
-    npm install npm-proxy-cache -g
+In-memory transparent HTTP/HTTPS caching proxy. General purpose in nature, but specifically designed/tested for
+caching artifact downloads in Docker build containers.
 
 
 ## Usage
 
-First of all, you need to configure `npm` to use proxy
+First build and launch the docker-transparent-http-cache image:
 
-    $ npm config set proxy http://localhost:8080/
-    $ npm config set https-proxy http://localhost:8080/
-    $ npm config set strict-ssl false
+    $ docker build -t docker-transparent-http-cache .
 
-Another way is to use it explicitly with `npm install` command, like this:
+    $ docker run -d --name cache-for-registry.npmjs.org --env TARGET_HOSTNAME=registry.npmjs.org docker-transparent-http-cache
 
-    $ npm --proxy http://localhost:8080 --https-proxy http://localhost:8080 --strict-ssl false install
+Now can any container get all requests for `registry.npmjs.org` cached simply by linking to the cache container!
 
-The `strict-ssl false` option is required since it's impossible to auth cached response
-from https proxy, which actully acts as a MITM (man in the middle). All other than `GET`
-requests *are not cached*, so you still be able to publish your modules to npm registry without
-switching cache on and off.
+    $ docker run -it --rm -e bash --link cache-for-registry.npmjs.org:registry.npmjs.org node:0.12 -c 'git clone https://github.com/mochajs/mocha.git; cd mocha; npm --strict-ssl false install'
 
-Once you have `npm` configured, start the proxy:
+The `strict-ssl false` option is required since npm by default will use `https://` when downloading, and the certificate
+docker-transparent-http-cache serves is signed by a self signed CA certificate that is not included in node's ca bundle.
 
-    $ npm-proxy-cache
+A nicer solution than `strict-ssl false` is to install the CA certificate intself as a trusted ca bundle:
 
-By default proxy starts on `localhost:8080` and have cache ttl 30 mins. These values might be
-overriden using command line options:
+    $ npm config cafile rootCA.epm
 
-    $ npm-proxy-cache --help
+Above command of course goes into the provisioning/Dockerfile of your private build image!
 
-      Usage: npm-proxy-cache [options]
+## Notes
 
-      Options:
+Will only cache GET requests, other verbs are passed straight through. Deploying/pushing artifacts will thus be unaffected.
 
-        -h, --host [name]     Hostname [localhost]
-        -p, --port [number]   An integer argument [8080]
-        -t, --ttl [seconds]   Cache lifetime in seconds [1800]
-        -s, --storage [path]  Storage path
-        -x, --proxy           HTTP proxy to be used, e.g. http://user:pass@example.com:8888/
-        -e, --expired         Use expired cache when npm registry unavailable
-        -f, --friendly-names  Use actual file names instead of hashes in the cache
-        -v, --verbose         Verbose mode
-            --help            This help
+Caches HTTP on port 80 and HTTPS on port 443 on `TARGET_HOSTNAME`.
 
+## Credits
 
-## Why can't I use the built-in npm cache?
+Code base is originally from npm-proxy-cache.
 
-Well, for some reason npm cache works not as expected and cache hits are low. Additionally,
-CI servers which run on multiply machines may utilize one cache storage which you can provide
-via caching proxy.
+## Why can't I use the built-in npm/maven/pip/gem/what-ever-cache?
 
+Containerized scenario builds typically takes place in ephemeral containers that have no pre-populated
+caches. One could re-use containers from build to build but that would undermine many of the very advantages
+that comes with containerizaton (as improved build isolation, build reproducibility, etc.)
 
-## Limitations
+Using a seperate longer-running container for caching downloads of artifacts reduces build times while managing the
+negative sides of caching.
 
- - Works only with node `0.10` and above.
+## What does transparent mean? Why no just set the soo familiar http_proxy/https_proxy environment variables?
+
+As this is a *transparent* http proxy is it possible to instrument the build containers to use the cache
+in an entirely agnostic way using the network linking feature of Docker:
+
+    --link cache-containter-for-registry.npmjs.org:registry.npmjs.org
+
+Also, with docker-transparent-http-cache there is no need to worry about dynamic ip-adresses, IPtables, etc. It's all
+being taken care of! And the build container will not even know that its requests are beeing cached.
+
+## Why not use dockerized squid/varnish?
+
+There were [pre-existing projects](https://github.com/jpetazzo/squid-in-a-can) that bundled heavy weight caching
+solution as a docker container, e.g. Squid.
+
+Squid for sure has more features than this project ever will.
+
+However docker-transparent-http-cache:
+
+ * is lean (at its core: ~100 lines of approachable hackable node js code)
+ * works transparently out-of-the-box, no iptables setup required
 
 
 ----
